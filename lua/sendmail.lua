@@ -1,6 +1,6 @@
--- sendmail.lua v0.1.0 (2013-01)
+-- sendmail.lua v0.1.2 (2014-08)
 
--- Copyright (c) 2013 Alexey Melnichuk
+-- Copyright (c) 2013-2014 Alexey Melnichuk
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to deal
@@ -19,6 +19,17 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 -- THE SOFTWARE.
+
+------------------------------------------------------------
+local DEFAULT_CHARSET = 'windows-1251'
+local DEFAULT_ENCODE  = 'base64'
+local DEFAULT_HEADERS = {
+  ['x-mailer'] = 'Cool mailer'
+}
+local DEFAULT_OPTIONS = {
+  confirm_sending = false;
+}
+------------------------------------------------------------
 
 local smtp   = require("socket.smtp")
 local socket = require("socket")
@@ -48,26 +59,15 @@ local function split(text, sep, plain)
   return res
 end
 
-local DEFAULT_CHARSET = 'windows-1251'
-local DEFAULT_ENCODE  = 'base64'
-local DEFAULT_HEADERS = {
-  ['x-mailer'] = 'Cool mailer'
-}
-local DEFAULT_OPTIONS = {
-  confirm_sending = false;
-}
-
-local function clone(t)
-  local o = {}
-  for k, v in pairs(t) do o[k] = v end
-  return o
-end
-
 local function append(dst, src)
   for k,v in pairs(src) do 
     dst[k] = v
   end
   return dst
+end
+
+local function clone(t)
+  return append({}, t)
 end
 
 local ENCODERS = {
@@ -114,13 +114,13 @@ local function make_t_File (fileName)
     mime_type   = fileName.mime_type   or mime_type
     disposition = fileName.disposition or disposition
     encode      = fileName.encode      or encode
-    if fileName.headers then headers = clone(fileName.headers) end
+    if fileName.headers then append(headers, fileName.headers) end
   end
 
   assert(src)
   assert(name)
   local encoder, err = mime.encode(encode)
-  if not encode then return nil, err end
+  if not encoder then return nil, err end
 
   return {
     headers = append(headers, {
@@ -140,7 +140,7 @@ local function make_t_Text(data, mime_type, charset, encode)
     charset   = data.charset   or charset
     encode    = data.encode    or encode
     mime_type = data.mime_type or mime_type
-    if data.headers then headers = clone(data.headers) end
+    if data.headers then append(headers, data.headers) end
     data      = data[1]        or data.data
   end
 
@@ -150,7 +150,7 @@ local function make_t_Text(data, mime_type, charset, encode)
   if encode:lower() == '8bit' then src = mime.eol(0, data)
   else
     local encoder, err = mime.encode(encode)
-    if not encode then return nil, err end
+    if not encoder then return nil, err end
     src = ltn12.source.chain(ltn12.source.string(data),
       ltn12.filter.chain(encoder,mime.wrap(encode))
     )
@@ -205,7 +205,7 @@ local function make_t_to(to,options)
   end
 
   for _,addr in ipairs(address) do 
-    local addr = "<" .. addr .. ">"
+    addr = "<" .. addr .. ">"
     if options.confirm_sending then
       addr = addr .. " NOTIFY=SUCCESS,FAILURE"
     end
@@ -219,14 +219,14 @@ local function encode_title(title)
   local encode  = DEFAULT_ENCODE
 
   if type(title) == 'table' then
-    charset = title.charset or charset
+    charset  = title.charset or charset
     encode   = title.encode or encode
     title    = title[1] or title.title
   end
 
   if title and #title > 0 then
     local encoder, err = encoders(encode)
-    if not encode then return nil, err end
+    if not encoder then return nil, err end
     local str = encoder(title)
     if str then return "=?" .. charset .. "?" .. encode:sub(1,1) .. "?" .. str .. "?=" end
     return title
@@ -330,15 +330,19 @@ local function CreateMail(from, to, smtp_server, message, options)
     end
   end
 
-
-  -- Эти заголовки показываются только в почтовой программе и игнорируются smtp.send
+  -- This headers uses only by mail clients. smtp.send ignores them.
   local headers = clone(DEFAULT_HEADERS)
 
-  headers['from'] = make_from(from)
+  local err
+  headers['from'], err  = make_from(from)
+  if not headers['from'] then return nil, err end
 
-  local to = make_t_to(to, options)
+  headers['to'], err = encode_title(to)
+  if not headers['to'] then return nil, err end
+
+  to = make_t_to(to, options)
   if (not to and not to[1]) then return nil, 'unknown recipient' end
-  headers['to'] = encode_title(to) .. (to[1]:match('%b<>') or '')
+  headers['to'] = headers['to'] .. (to[1]:match('%b<>') or '')
 
   if options.confirm_sending then
     headers['Return-Receipt-To']="<" .. (from.address or '') .. ">"
@@ -350,7 +354,10 @@ local function CreateMail(from, to, smtp_server, message, options)
       headers = append(clone(message.headers), headers)
     end
 
-    headers.subject = encode_title(message.subject)
+    headers.subject, err = encode_title(message.subject)
+    if not headers.subject then
+      return nil, err
+    end
 
     local body, err = make_t_Body(message)
     if not body then return nil, err end
@@ -361,8 +368,10 @@ local function CreateMail(from, to, smtp_server, message, options)
     from     = from.address and "<" .. from.address .. ">" or '',
     rcpt     = to,
     server   = smtp_server.address,
+    port     = smtp_server.port,
     user     = smtp_server.user,
     password = smtp_server.password,
+    create   = smtp_server.create,
     source   = smtp.message(source)
   }
 end
