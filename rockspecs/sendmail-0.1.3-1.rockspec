@@ -1,17 +1,9 @@
--- This file was automatically generated for the LuaDist project.
-
 package = "sendmail"
-version = "0.1.2-1"
--- LuaDist source
+version = "0.1.3-1"
 source = {
-  tag = "0.1.2-1",
-  url = "git://github.com/LuaDist-testing/sendmail.git"
+  url = "https://github.com/moteus/lua-sendmail/archive/v0.1.3.zip",
+  dir = "lua-sendmail-0.1.3",
 }
--- Original source
--- source = {
---   url = "https://github.com/moteus/lua-sendmail/archive/v0.1.2.zip",
---   dir = "lua-sendmail-0.1.2",
--- }
 
 description = {
   summary = "Simple wrapper around luasoket smtp.send",
