@@ -1,16 +1,16 @@
 -- This file was automatically generated for the LuaDist project.
 
 package = "sendmail"
-version = "0.1.4-1"
+version = "0.1.5-1"
 -- LuaDist source
 source = {
-  tag = "0.1.4-1",
+  tag = "0.1.5-1",
   url = "git://github.com/LuaDist-testing/sendmail.git"
 }
 -- Original source
 -- source = {
---   url = "https://github.com/moteus/lua-sendmail/archive/v0.1.4.zip",
---   dir = "lua-sendmail-0.1.4",
+--   url = "https://github.com/moteus/lua-sendmail/archive/v0.1.5.zip",
+--   dir = "lua-sendmail-0.1.5",
 -- }
 
 description = {

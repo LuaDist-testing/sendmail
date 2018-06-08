@@ -84,7 +84,8 @@ DEFAULT_ENCODE  = 'base64'
 -- @tfield string name attachment's name
 -- @tfield ?string path surce file path
 -- @tfield ?string data content of attachment
--- @tfield ?string file opened file handle (io.open in binary mode)
+-- @tfield ?file file opened file handle (io.open in binary mode)
+-- @tfield ?ltn12.source source source of file content
 -- @tfield ?string charset
 -- @tfield ?string encode
 -- @tfield ?string mime_type Default 'application/octet-stream'
@@ -96,11 +97,21 @@ DEFAULT_ENCODE  = 'base64'
 -- @tfield boolean confirm_sending
 -- @table OPTIONS
 
+--- a table describe cURL IO backend
+-- @tfield ?boolean async if set to true then sendmail just init/create cURL easy handle and returns it.
+--                        So it possible use this handle to perform async IO using cURL multi handle.
+--                        User code responsible for close this handle.
+-- @tfield cURL::easy handle pass existing cURL easy handle. sendmail does not close this handle.
+--                        So it possibe reuse same easy handle to send multiple emails.
+-- @table CURL
+
 --- Send mail params as single table.
 -- @tfield string|FROM from
 -- @tfield string|TO to
 -- @tfield string|SERVER server
 -- @tfield string|MESSAGE message
+-- @tfield ?string engine currently supports `curl` and `luasocket`.
+-- @tfield ?CURL curl
 -- @tfield ?OPTIONS options
 -- @table SENDPARAMS
 
